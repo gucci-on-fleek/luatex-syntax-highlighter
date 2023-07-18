@@ -1,0 +1,134 @@
+% Preliminaries
+\NeedsTeXFormat{LaTeX2e}
+
+\ProvidesExplPackage
+    {syntax}
+    {0000/00/00}
+    {v0.0.0}
+    {syntax}
+
+%%%%%%%%%%%%%%%%%%%
+%%% Environment %%%
+%%%%%%%%%%%%%%%%%%%
+
+\tl_clear:N \l_tmpa_tl
+\regex_replace_all:nnN { } {
+    \c { __syntax_scanner:w }
+    \cP\# 1
+    \cO(\\ end \{ syntax \})
+} \l_tmpa_tl
+
+\exp_last_unbraced:NV \cs_set_protected:Npn \l_tmpa_tl {
+    \__syntax_highlight:n { #1 }
+    \end{syntax}
+}
+
+\cctab_const:Nn \c__syntax_cctab {
+    \cctab_select:N \c_other_cctab
+    \endlinechar = 10
+}
+
+\cs_new_protected:Npn \__syntax_env:w {
+    \cctab_begin:N \c__syntax_cctab
+    \__syntax_scanner:w
+}
+
+\cs_new_protected:Npn \endsyntax {
+    \cctab_end:
+}
+
+
+%%%%%%%%%%%%%%
+%%% Inline %%%
+%%%%%%%%%%%%%%
+
+%% Generate needed variants
+\cs_generate_variant:Nn \tl_to_str:n { e }
+\cs_generate_variant:Nn \tl_if_single:nTF { e }
+
+%% Declare variables
+\tl_new:N \l__syntax_delim_tl
+\tl_new:N \l__syntax_curr_tl
+\tl_new:N \l__syntax_saved_tl
+
+%% Remove extra spaces
+\regex_const:Nn \l__syntax_csspace_regex {
+    (\\ ([[:alpha:]]{2,}|.)) \ ([[:^alpha:]]|$)
+} \iffalse$\fi
+
+%% Removed doubled hashes
+\regex_const:Nn \l__syntax_hash_regex {
+    (\#)\#
+}
+
+%% Grab the argument
+\cs_new_protected:Npn \__syntax_grabber:w #1 {
+    \tl_clear:N \l__syntax_saved_tl
+
+    \tl_if_single:eTF { \tl_to_str:n { #1 } } {
+        \tl_set:Nn \l__syntax_delim_tl { #1 }
+
+        \peek_analysis_map_inline:n {
+            \tl_set:Ne \l__syntax_curr_tl { \tl_to_str:e { ##1 } }
+
+            \tl_if_eq:NNTF \l__syntax_delim_tl \l__syntax_curr_tl {
+                \peek_analysis_map_break:n {
+                    \__syntax_cleaner:N \l__syntax_saved_tl
+                    \tl_clear:N \l__syntax_saved_tl
+                }
+            } {
+                \tl_put_right:NV \l__syntax_saved_tl \l__syntax_curr_tl
+            }
+        }
+    } {
+        \tl_set:Ne \l__syntax_saved_tl { \tl_to_str:n { #1 } }
+        \__syntax_cleaner:N \l__syntax_saved_tl
+    }
+}
+
+%% Remove any extra spaces from the argument
+\cs_new_protected:Nn \__syntax_cleaner:N {
+    \regex_replace_all:NnN
+        \l__syntax_csspace_regex
+        { \1 \3 }
+        #1
+
+    \regex_replace_all:NnN
+        \l__syntax_hash_regex
+        { \1 }
+        #1
+
+    \__syntax_highlight:V #1
+}
+
+%%%%%%%%%%%%%%%%
+%%% Combined %%%
+%%%%%%%%%%%%%%%%
+
+\tl_new:N \g__syntax_lang_tl
+
+\cs_new_protected:Npn \syntax #1 {
+    \tl_set:Nn \g__syntax_lang_tl { #1 }
+
+    \tl_set:Nn \l__tmpa_tl { syntax }
+    \tl_if_eq:NNTF \@currenvir \l__tmpa_tl {
+        \__syntax_env:w
+    } {
+        \__syntax_grabber:w
+    }
+}
+
+\cs_new_protected:Nn \__syntax_highlight:n {
+    \int_set:Nn \l_tmpa_int { \fontid \font }
+    \ttfamily
+    \__syntax_highlight_aux:n { #1 }
+    \setfontid \l_tmpa_int
+}
+
+\sys_if_engine_luatex:T {
+    \lua_load_module:n { syntax }
+}
+
+\cs_generate_variant:Nn \__syntax_highlight:n { V }
+
+\endinput

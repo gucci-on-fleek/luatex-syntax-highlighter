@@ -1,0 +1,21 @@
+\documentclass{article}
+
+\usepackage{syntax}
+
+\begin{document}
+Hello!
+
+\begin{syntax}{lua}
+-- this is a comment
+function hello_world()
+    local s = "Hello, world!"
+    return s
+end
+
+print(hello_world())
+\end{syntax}
+
+AAA \syntax{javascript}|const regex = /\s*/;| ZZZ
+
+
+\end{document}

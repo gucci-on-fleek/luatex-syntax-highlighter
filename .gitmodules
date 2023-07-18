@@ -1,0 +1,5 @@
+[submodule "third_party/scintillua"]
+    path = third_party/scintillua
+    url = https://github.com/orbitalquark/scintillua.git
+    ignore = all
+    shallow = true
