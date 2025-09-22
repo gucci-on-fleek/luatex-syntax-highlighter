@@ -177,7 +177,20 @@ local function register_tex_cmd(name, func, args, protected)
 end
 
 
-local lexer = require("lexer")
+local lexer
+if _VERSION == "Lua 5.5" then -- TODO: Lua 5.5 hack!
+    local path = resolvers.findfile("lexer.lua")
+    local data = io.loaddata(path)
+    data = data:gsub(
+        "name = child._name .. '.' .. name",
+        "local name = child._name .. '.' .. name"
+    )
+    lexer = load(data)()
+else
+    lexer = require("lexer")
+end
+
+
 if not context then
     lexer.property = {
         ['scintillua.lexers'] =
@@ -252,7 +265,7 @@ local function highlight(lang, code)
     code = code:gsub("%s*$", "\n")
     local lexer = lexer.load(lang)
     local tokens = lexer:lex(code)
-    colourize, out = make_colourize(code)
+    local colourize, out = make_colourize(code)
 
     colourize(1, tokens[1])
     for i = 2, #tokens, 2 do
