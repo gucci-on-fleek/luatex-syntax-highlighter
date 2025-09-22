@@ -1,13 +1,12 @@
 %D \module
-%D   [     file=t-unnamed-emoji,
-%D      version=0.1.2, %%version
-%D        title=unnamed-emoji,
-%D     subtitle=\ConTeXt module unnamed-emoji,
+%D   [     file=t-syntax,
+%D      version=0.0.1, %%version
+%D        title=Lua-based syntax highlighting for ConTeXt,
 %D       author=Max Chernoff,
-%D         date=2023-07-04, %%dashdate
+%D         date=2025-09-22,
 %D    copyright=Max Chernoff,
 %D      license=MPL-2.0+,
-%D          url=https://github.com/gucci-on-fleek/unnamed-emoji]
+%D          url=https://github.com/gucci-on-fleek/luatex-syntax-highlighter]
 \startmodule[syntax]
 \unprotect
 
