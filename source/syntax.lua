@@ -231,7 +231,7 @@ local function make_colourize(code)
                     out.next = node.prepend_prevdepth(n, tex.prevdepth)
                 else
                     local prevdepth = node.new("glue")
-                    prevdepth.width = tex.prevdepth
+                    prevdepth.width = tex.prevdepth + tex.sp("1lh") - n.height
                     out.next = prevdepth
                     prevdepth.next = n
                 end
