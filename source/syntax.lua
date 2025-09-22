@@ -129,8 +129,12 @@ local function register_tex_cmd(name, func, args, protected)
     -- Mangle the name to an appropriate form for each supported format.
     if tex.formatname:find("latex") then
         name = "__syntax_" .. name .. ":" .. string.rep("n", #args)
+    elseif optex then
+        name = "_syntax_" .. name
+    elseif context then
+        name = "syntax_" .. name
     else
-        error()
+        name = "syntax@" .. name
     end
 
     -- Push the appropriate scanner functions onto the scanning stack.
@@ -150,23 +154,43 @@ local function register_tex_cmd(name, func, args, protected)
         func(table.unpack(values))
     end
 
-    local index = luatexbase.new_luafunction(name)
-    lua.get_functions_table()[index] = scanning_func
-
-    if protected then
-        token.set_lua(name, index, "protected")
+    -- Actually register the function
+    if optex then
+        define_lua_command(name, scanning_func)
+    elseif context then
+        interfaces.implement {
+            name = name,
+            public = true,
+            arguments = args,
+            actions = func,
+        }
     else
-        token.set_lua(name, index)
+        local index = luatexbase.new_luafunction(name)
+        lua.get_functions_table()[index] = scanning_func
+
+        if protected then
+            token.set_lua(name, index, "protected")
+        else
+            token.set_lua(name, index)
+        end
     end
 end
 
 
 local lexer = require("lexer")
-lexer.property = {
-    ['scintillua.lexers'] =
-        kpse.find_file("lexer.lua", "texmfscripts")
-        :gsub("/lexer%.lua", "")
-}
+if not context then
+    lexer.property = {
+        ['scintillua.lexers'] =
+            kpse.find_file("lexer.lua", "texmfscripts")
+            :gsub("/lexer%.lua", "")
+    }
+else
+    lexer.property = {
+        ['scintillua.lexers'] =
+            resolvers.findfile("lexer.lua")
+            :gsub("/lexer%.lua", "")
+    }
+end
 
 
 local function make_colourize(code)
@@ -176,16 +200,28 @@ local function make_colourize(code)
     return function(index, style)
         local colour = colours[style] or colours[style:match("^([^.]+)") or ""] or colours["black"]
 
-        local start = node.new("whatsit", "pdf_colorstack")
-        start.stack = 0
-        start.command = 1
-        start.data = string.format("%.2f %.2f %.2f rg", colour[1]/255, colour[2]/255, colour[3]/255)
-        node.slide(inner).next = start
+        local start
+        if not context then
+            start = node.new("whatsit", "pdf_colorstack")
+            start.stack = 0
+            start.command = 1
+            start.data = string.format("%.2f %.2f %.2f rg", colour[1]/255, colour[2]/255, colour[3]/255)
+            node.slide(inner).next = start
+        else
+            start = node.slide(inner)
+        end
 
         for char in code:sub(last, index-1):gmatch(".") do
             if char == "\n" or char == "\r" then
                 local n = node.hpack(inner)
-                out.next = node.prepend_prevdepth(n, tex.prevdepth)
+                if not context then
+                    out.next = node.prepend_prevdepth(n, tex.prevdepth)
+                else
+                    local prevdepth = node.new("glue")
+                    prevdepth.width = tex.prevdepth
+                    out.next = prevdepth
+                    prevdepth.next = n
+                end
                 out = n
                 inner = node.new("kern")
             else
@@ -196,10 +232,15 @@ local function make_colourize(code)
             end
         end
 
-        local stop = node.new("whatsit", "pdf_colorstack")
-        stop.stack = 0
-        stop.command = 2
-        node.slide(inner).next = stop
+        if not context then
+            local stop = node.new("whatsit", "pdf_colorstack")
+            stop.stack = 0
+            stop.command = 2
+            node.slide(inner).next = stop
+        else
+            node.slide(inner).next = node.new("kern")
+            nodes.tracers.colors.setlist(start, "syntax_" .. table.concat(colour, "_"))
+        end
 
         last = index
     end, out
@@ -207,6 +248,7 @@ end
 
 
 local function highlight(lang, code)
+    code = code:gsub("\r", "\n")
     code = code:gsub("%s*$", "\n")
     local lexer = lexer.load(lang)
     local tokens = lexer:lex(code)
@@ -233,3 +275,17 @@ register_tex_cmd(
     { "string", },
     true
 )
+
+if context then
+    for colour, values in pairs(colours) do
+        attributes.colors.defineprocesscolor(
+            "syntax_" .. table.concat(values, "_"),
+            string.format("x=%02X%02X%02X", table.unpack(values))
+        )
+    end
+end
+
+syntax = {
+    highlight = tex_highlight,
+}
+return syntax

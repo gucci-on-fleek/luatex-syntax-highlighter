@@ -1,0 +1,41 @@
+%D \module
+%D   [     file=t-unnamed-emoji,
+%D      version=0.1.2, %%version
+%D        title=unnamed-emoji,
+%D     subtitle=\ConTeXt module unnamed-emoji,
+%D       author=Max Chernoff,
+%D         date=2023-07-04, %%dashdate
+%D    copyright=Max Chernoff,
+%D      license=MPL-2.0+,
+%D          url=https://github.com/gucci-on-fleek/unnamed-emoji]
+\startmodule[syntax]
+\unprotect
+
+\installnamespace{syntax}
+
+\installcommandhandler \????syntax {syntax} \????syntax
+
+\appendtoks
+    \edef\g__syntax_lang_tl{\syntaxparameter{language}}
+\to \everysetupsyntax
+
+\setupsyntax[language=python]
+
+\ctxloadluafile{syntax}
+
+\define\startsyntax{\begingroup\tt\grabbufferdata[syntax][startsyntax][stopsyntax]}
+
+\startluacode
+interfaces.implement {
+    name      = "stopsyntax",
+    public    = true,
+    actions   = function()
+        local content = buffers.getcontent "syntax"
+        syntax.highlight(content)
+        context.endgroup()
+    end,
+}
+\stopluacode
+
+\protect
+\stopmodule
